@@ -20,3 +20,9 @@ Then:
     archivebox server
     podman ps
     podman run --rm -i --user SOME_USER_ID --volume /path/to/archivebox/data:/data localhost/archivebox-on-podman add < ~/somefile
+
+## Regular rebuild
+
+Rebuild when a new critical fix in Chromium is released, as well as other dependent packages.
+
+    podman build --squash -t localhost/archivebox-on-podman .
