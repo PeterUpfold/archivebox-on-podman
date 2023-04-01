@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bullseye
+FROM python:3.11-slim-bullseye
 
 LABEL name="archivebox-on-podman" \
     maintainer="Nick Sweeting <archivebox-docker@sweeting.me>" \
@@ -43,7 +43,7 @@ RUN apt-get update -qq \
 
 # Install Node environment
 RUN curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - \
-    && echo 'deb https://deb.nodesource.com/node_15.x bullseye main' >> /etc/apt/sources.list \
+    && echo 'deb https://deb.nodesource.com/node_18.x bullseye main' >> /etc/apt/sources.list \
     && apt-get update -qq \
     && apt-get install -qq -y --no-install-recommends \
         nodejs \
