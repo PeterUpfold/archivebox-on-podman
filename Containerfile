@@ -31,24 +31,21 @@ RUN groupadd --system $ARCHIVEBOX_USER \
 RUN apt-get update -qq \
     && apt-get install -qq -y --no-install-recommends \
         apt-transport-https ca-certificates gnupg2 zlib1g-dev \
-        dumb-init gosu cron unzip curl \
-    && rm -rf /var/lib/apt/lists/*
+        dumb-init gosu cron unzip curl
 
 # Install apt dependencies
 RUN apt-get update -qq \
     && apt-get install -qq -y --no-install-recommends \
         wget curl chromium git ffmpeg youtube-dl ripgrep \
-        fontconfig fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-symbola fonts-noto fonts-freefont-ttf \
-    && rm -rf /var/lib/apt/lists/*
+        fontconfig fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-symbola fonts-noto fonts-freefont-ttf 
 
 # Install Node environment
 RUN curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - \
     && echo 'deb https://deb.nodesource.com/node_18.x bullseye main' >> /etc/apt/sources.list \
     && apt-get update -qq \
     && apt-get install -qq -y --no-install-recommends \
-        nodejs \
+        nodejs
     # && npm install -g npm \
-    && rm -rf /var/lib/apt/lists/*
 
 # Install Node dependencies
 WORKDIR "$NODE_DIR"
@@ -72,9 +69,7 @@ RUN apt-get update -qq \
     && echo 'empty placeholder for setup.py to use' > "$CODE_DIR/archivebox/README.md" \
     && python3 -c 'from distutils.core import run_setup; result = run_setup("./setup.py", stop_after="init"); print("\n".join(result.install_requires + result.extras_require["sonic"]))' > /tmp/requirements.txt \
     && pip install --quiet -r /tmp/requirements.txt \
-    && apt-get purge -y build-essential python-dev python3-dev \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get autoremove -y 
 
 # Install apt development dependencies
 # RUN apt-get install -qq \
@@ -86,15 +81,44 @@ RUN apt-get update -qq \
     # && pip install --quiet -r /tmp/dev_requirements.txt
 
 # Install ArchiveBox Python package and its dependencies
+#WORKDIR "$CODE_DIR"
+#ADD . "$CODE_DIR"
+#RUN pip install archivebox
 WORKDIR "$CODE_DIR"
-ADD . "$CODE_DIR"
-RUN pip install archivebox
+ENV PATH="${PATH}:$VENV_PATH/bin"
+RUN python -m venv --clear --symlinks "$VENV_PATH" \
+    && pip install --upgrade --quiet pip setuptools \
+    && mkdir -p "$CODE_DIR/archivebox"
+ADD "./setup.py" "$CODE_DIR/"
+ADD "./package.json" "$CODE_DIR/archivebox/"
+RUN apt-get update -qq \
+    && apt-get install -qq -y --no-install-recommends \
+        build-essential python-dev python3-dev \
+    && echo 'empty placeholder for setup.py to use' > "$CODE_DIR/archivebox/README.md" \
+    && python3 -c 'from distutils.core import run_setup; result = run_setup("./setup.py", stop_after="init"); print("\n".join(result.install_requires + result.extras_require["sonic"]))' > /tmp/requirements.txt \
+    && pip install -r /tmp/requirements.txt \
+    && pip install --upgrade youtube-dl yt-dlp \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ArchiveBox Python package and its dependencies
+WORKDIR "$CODE_DIR"
+#ADD . "$CODE_DIR" # we want this blank
+RUN rm -fv -- archivebox/README.md archivebox/package.json setup.py \
+    && git config --global init.defaultBranch dev \
+    && git init \
+    && git remote add origin https://github.com/ArchiveBox/ArchiveBox.git \
+    && git pull origin dev --allow-unrelated-histories \
+    && git submodule update --init --recursive \
+    && chown -R root:root . \
+    && chmod a+rX -R . \
+    && pip install -e .
 
 # Setup ArchiveBox runtime config
 WORKDIR "$DATA_DIR"
 ENV IN_DOCKER=True \
-    CHROME_SANDBOX=False \
-    CHROME_BINARY="chromium" \
+    CHROME_SANDBOX=True \
+    CHROME_BINARY="/usr/bin/chromium" \
     USE_SINGLEFILE=True \
     SINGLEFILE_BINARY="$NODE_DIR/node_modules/.bin/single-file" \
     USE_READABILITY=True \
